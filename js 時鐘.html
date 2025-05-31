@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>時鐘</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Workbench&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        box-sizing: border-box;
+        transition: 1s;
+      }
+
+      html,
+      body {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      }
+
+      #all {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      }
+
+      #number_clock {
+        font-family: "Workbench", sans-serif;
+        font-size: 100px;
+        mix-blend-mode: difference;
+      }
+
+      #a {
+        transition: opacity 0.2s;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="all">
+      <div id="number_clock">
+        <span id="h">00</span>
+        <span id="a">：</span>
+        <span id="m">00</span>
+      </div>
+    </div>
+    <script>
+      // 更新數字
+      function number_update(hour, min) {
+        // 處理12小時制
+        // 0點以及12點要顯示成 12
+        const tw_hour = hour % 12 || 12;
+
+        // 整理格式
+        // 處理 分 如果出現0，被誤判成 假值 的情況
+        // 1.轉成字串
+        // 2.字串要固定2位數
+        // 　.padStart(字串總長度, 要補的字元)
+        // 　　↑ 1.補在前面 2.如果字串不夠長就不會補
+        const add_zero = min.toString().padStart(2, "0");
+        const add_zero_tw_hour = tw_hour.toString().padStart(2, "0");
+
+        // dom更新
+        // 1.抓畫面上 #h 的區塊
+        // 2.更新畫面
+        // 　.textContent()
+        // 　　↑ 1.只改html標籤內的「文字」 2.不會動html結構
+        document.getElementById("h").textContent = add_zero_tw_hour;
+        document.getElementById("m").textContent = add_zero;
+      }
+
+      // 顏色過渡流程
+      // 需傳入資料 1. star：開始數值; 2. middle：轉折數值; 3. end：結尾數值; 4.forColor_now_hour：現在第幾步; 5.how_long_hour：總共幾步
+      function coloer_range(start, middle, end, hour) {
+        // 如果 現在時間段 在前半段
+        if (hour % 4 <= 3) {
+          // 前半段：start → middle
+          return start + ((((middle - start) / 3) * hour) % 4);
+        } else {
+          // 後半段：middle → end
+          return middle - ((middle - end) / 3) * ((hour % 4) - 3);
+        }
+      }
+
+      // 改變背景顏色
+      function change_color(hour, min, sec) {
+        // 色相每分變一次，圓形漸層 外：hue；內hue2
+        // hue 色相環每分要轉 360度 / 60 = 6度
+        // 各分 色相環度數 為 min *6
+        // hue2 每秒 增加 6/60
+        let hue = min * 6;
+        let hue2 = sec * 6;
+        let value;
+        let chroma;
+        // 根據小時
+        // - 設定明度
+        // - 設定彩度
+        // 1. 6~12：
+        // - 80%~100%~80%
+        // - 30%~90%
+        // 2. 12~18：
+        // - 80%~30%
+        // - 90%~100%~90%
+        // 3. 18~24：
+        // - 30%~0%~30%
+        // - 90%~30%
+        // 4. 0~6：
+        // - 30%~80%
+        // - 30%~0%~30%
+        if (hour >= 6 && hour < 12) {
+          value = coloer_range(80, 100, 80, hour);
+          chroma = 30 + (hour - 6) * 10;
+        } else if (hour >= 12 && hour < 18) {
+          value = 80 - (hour - 12) * 10;
+          chroma = coloer_range(90, 100, 90, hour);
+        } else if (hour >= 18 && hour < 24) {
+          value = coloer_range(30, 0, 30, hour);
+          chroma = 90 - (hour - 18) * 10;
+        } else if (hour >= 0 && hour < 6) {
+          value = 90 - hour * 10;
+          chroma = coloer_range(30, 0, 30, hour);
+        }
+        // 改變背景色（hsl）
+        document.body.style.background = `radial-gradient(circle, hsl(${hue2}, ${chroma}%, ${value}%),hsl(${hue}, ${chroma}%, ${value}%))`;
+
+        // 字的負片效果
+        const number_clock_hue = (hue2 + 180) % 360;
+        const number_clock_value = 100 - value;
+        const number_clock_chroma = 50 + (50 - chroma);
+        document.getElementById(
+          "number_clock"
+        ).style.color = `hsl(${number_clock_hue}, ${number_clock_chroma}%, ${number_clock_value}%)`;
+      }
+
+      // 每秒秒數變化後冒號閃爍一次
+      let ex_sec = -1;
+      function change_a(sec) {
+        if (sec !== ex_sec) {
+          const colon = document.getElementById("a");
+          colon.style.visibility = "hidden";
+          setTimeout(() => {
+            colon.style.visibility = "visible";
+          }, 200);
+          ex_sec = sec;
+        }
+      }
+
+      function update() {
+        const now = new Date();
+        const hour = now.getHours();
+        const min = now.getMinutes();
+        const sec = now.getSeconds();
+        change_color(hour, min, sec);
+        number_update(hour, min);
+        change_a(sec);
+      }
+
+      // 先跑一次
+      update();
+      // 每秒跑一次
+      setInterval(update, 1000);
+    </script>
+  </body>
+</html>
